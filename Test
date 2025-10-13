@@ -8,6 +8,13 @@ _G.AutoBuyTreats = false
 _G.WalkSpeed = 16
 _G.AutoReturnEnabled = false
 
+-- OTOMATİK RESET MANTIĞI
+if LocalPlayer.Character then
+    pcall(function()
+        LocalPlayer.Character:WaitForChild("Humanoid").Health = 0
+    end)
+end
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CustomLassoGui_AutoReturn"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -15,7 +22,7 @@ ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 280, 0, 240) -- GUI Boyutu güncellendi
+MainFrame.Size = UDim2.new(0, 280, 0, 240)
 MainFrame.Position = UDim2.new(0.5, -140, 0.5, -120)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 MainFrame.BorderSizePixel = 1
@@ -30,11 +37,8 @@ local UICorner_Title = Instance.new("UICorner"); UICorner_Title.CornerRadius = U
 local TitleLabel = Instance.new("TextLabel"); TitleLabel.Name = "TitleLabel"; TitleLabel.Size = UDim2.new(1, 0, 1, 0); TitleLabel.Text = "Lasso Animals Helper"; TitleLabel.Font = Enum.Font.SourceSansBold; TitleLabel.TextSize = 16; TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); TitleLabel.BackgroundTransparency = 1; TitleLabel.Parent = TitleBar
 local AutoBuyButton = Instance.new("TextButton"); AutoBuyButton.Name = "AutoBuyButton"; AutoBuyButton.Size = UDim2.new(0, 240, 0, 35); AutoBuyButton.Position = UDim2.new(0.5, -120, 0, 45); AutoBuyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); AutoBuyButton.Font = Enum.Font.SourceSansBold; AutoBuyButton.Text = "Auto Buy: OFF"; AutoBuyButton.TextColor3 = Color3.fromRGB(255, 255, 255); AutoBuyButton.TextSize = 16; AutoBuyButton.Parent = MainFrame
 local UICorner_AutoBuy = Instance.new("UICorner"); UICorner_AutoBuy.CornerRadius = UDim.new(0, 6); UICorner_AutoBuy.Parent = AutoBuyButton
-
--- YENİ BUTON: Auto Return
 local AutoReturnButton = Instance.new("TextButton"); AutoReturnButton.Name = "AutoReturnButton"; AutoReturnButton.Size = UDim2.new(0, 240, 0, 35); AutoReturnButton.Position = UDim2.new(0.5, -120, 0, 90); AutoReturnButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); AutoReturnButton.Font = Enum.Font.SourceSansBold; AutoReturnButton.Text = "Auto Return: OFF"; AutoReturnButton.TextColor3 = Color3.fromRGB(255, 255, 255); AutoReturnButton.TextSize = 16; AutoReturnButton.Parent = MainFrame
 local UICorner_AutoReturn = Instance.new("UICorner"); UICorner_AutoReturn.CornerRadius = UDim.new(0, 6); UICorner_AutoReturn.Parent = AutoReturnButton
-
 local SpeedSliderLabel = Instance.new("TextLabel"); SpeedSliderLabel.Name = "SpeedSliderLabel"; SpeedSliderLabel.Size = UDim2.new(1, -20, 0, 20); SpeedSliderLabel.Position = UDim2.new(0, 10, 0, 135); SpeedSliderLabel.Text = "Speed: 16"; SpeedSliderLabel.Font = Enum.Font.SourceSans; SpeedSliderLabel.TextSize = 14; SpeedSliderLabel.TextColor3 = Color3.fromRGB(220, 220, 220); SpeedSliderLabel.BackgroundTransparency = 1; SpeedSliderLabel.TextXAlignment = Enum.TextXAlignment.Left; SpeedSliderLabel.Parent = MainFrame
 local SliderBackground = Instance.new("Frame"); SliderBackground.Name = "SliderBackground"; SliderBackground.Size = UDim2.new(0, 240, 0, 10); SliderBackground.Position = UDim2.new(0.5, -120, 0, 155); SliderBackground.BackgroundColor3 = Color3.fromRGB(20, 20, 20); SliderBackground.Parent = MainFrame
 local UICorner_SliderBg = Instance.new("UICorner"); UICorner_SliderBg.Parent = SliderBackground
@@ -62,20 +66,24 @@ local function AttemptToBuyAllFruits() if not _G.AutoBuyTreats or not BuyTreatEv
 AutoBuyButton.MouseButton1Click:Connect(function() _G.AutoBuyTreats = not _G.AutoBuyTreats; if _G.AutoBuyTreats then AutoBuyButton.Text = "Auto Buy: ON"; AutoBuyButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50); AttemptToBuyAllFruits() else AutoBuyButton.Text = "Auto Buy: OFF"; AutoBuyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) end end)
 task.spawn(function() while task.wait(0.2) do pcall(function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = _G.WalkSpeed end end) end end)
 
-LocalPlayer.CharacterAdded:Connect(function(character)
-    task.wait(2)
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    if humanoidRootPart then
-        currentPenLocation = humanoidRootPart.Position
-    end
-end)
+local function UpdatePenLocation(character)
+    pcall(function()
+        if not character then return end
+        task.wait(1.5)
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            currentPenLocation = humanoidRootPart.Position
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(UpdatePenLocation)
 
 local RemoteEvents = ReplicatedStorage:WaitForChild("Remote_Events", 10)
 if RemoteEvents then
     local RestockEvent = RemoteEvents:WaitForChild("NOT", 5)
     BuyTreatEvent = RemoteEvents:WaitForChild("Buy_Treat", 5)
     local CaptureFXEvent = RemoteEvents:WaitForChild("Capture_FX", 5)
-    
     if RestockEvent and BuyTreatEvent then
         RestockEvent.OnClientEvent:Connect(function(message)
             if message == "The treat shop has been restocked!" then
@@ -83,17 +91,14 @@ if RemoteEvents then
             end
         end)
     end
-    
-    -- YENİ MANTIK: Otomatik Ağıla Dönme
     if CaptureFXEvent then
         CaptureFXEvent.OnClientEvent:Connect(function(playerWhoCaptured, capturedAnimal)
             if not _G.AutoReturnEnabled then return end
-
             if playerWhoCaptured == LocalPlayer then
                 local character = LocalPlayer.Character
                 local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
                 if humanoidRootPart and currentPenLocation then
-                    task.wait(0.1) -- Işınlanmadan önce çok kısa bir bekleme
+                    task.wait(0.1)
                     humanoidRootPart.CFrame = CFrame.new(currentPenLocation)
                 end
             end
