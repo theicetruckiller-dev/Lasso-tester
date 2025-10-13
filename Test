@@ -85,30 +85,34 @@ if RemoteEvents then
     end
     if ThrowLassoEvent then
         task.spawn(function()
+            local animalsFolder = workspace:WaitForChild("Map"):WaitForChild("Animals")
             while task.wait(0.5) do
                 if _G.AutoCatchEnabled and _G.TargetAnimalName ~= "" then
                     pcall(function()
-                        local targetModel = nil
-                        for _, v in ipairs(getnilinstances()) do
-                            if v.Name == _G.TargetAnimalName and v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
-                                targetModel = v
+                        for _, targetModel in ipairs(animalsFolder:GetChildren()) do
+                            if targetModel.Name == _G.TargetAnimalName and targetModel:IsA("Model") and targetModel:FindFirstChild("HumanoidRootPart") then
+                                local character = LocalPlayer.Character
+                                local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+                                local head = character and character:FindFirstChild("Head")
+                                if not (humanoidRootPart and head) then return end
+                                
+                                keypress(Enum.KeyCode.One)
+                                task.wait(0.2)
+                                
+                                local startPos = humanoidRootPart.Position
+                                local targetPos = targetModel.HumanoidRootPart.Position
+                                local headPos = head.Position
+                                
+                                ThrowLassoEvent:FireServer(LocalPlayer, startPos, targetPos, headPos)
+                                
+                                task.wait(1.5)
+                                
+                                if currentPenLocation then
+                                    humanoidRootPart.CFrame = CFrame.new(currentPenLocation)
+                                end
+                                
+                                -- Hayvanı yakaladıktan sonra döngüden çıkıp yeni arama için bekle
                                 break
-                            end
-                        end
-                        if targetModel then
-                            local character = LocalPlayer.Character
-                            local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-                            local head = character and character:FindFirstChild("Head")
-                            if not (humanoidRootPart and head) then return end
-                            keypress(Enum.KeyCode.One)
-                            task.wait(0.2)
-                            local startPos = humanoidRootPart.Position
-                            local targetPos = targetModel.HumanoidRootPart.Position
-                            local headPos = head.Position
-                            ThrowLassoEvent:FireServer(LocalPlayer, startPos, targetPos, headPos)
-                            task.wait(1.5)
-                            if currentPenLocation then
-                                humanoidRootPart.CFrame = CFrame.new(currentPenLocation)
                             end
                         end
                     end)
