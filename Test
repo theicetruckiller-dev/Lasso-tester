@@ -16,13 +16,13 @@ if LocalPlayer.Character then
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CustomLassoGui_AutoCollect"
+ScreenGui.Name = "CustomLassoGui_Final"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 280, 0, 280) -- Yeni buton için boyut artırıldı
+MainFrame.Size = UDim2.new(0, 280, 0, 280)
 MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 MainFrame.BorderSizePixel = 1
@@ -39,11 +39,8 @@ local AutoBuyButton = Instance.new("TextButton"); AutoBuyButton.Name = "AutoBuyB
 local UICorner_AutoBuy = Instance.new("UICorner"); UICorner_AutoBuy.CornerRadius = UDim.new(0, 6); UICorner_AutoBuy.Parent = AutoBuyButton
 local AutoReturnButton = Instance.new("TextButton"); AutoReturnButton.Name = "AutoReturnButton"; AutoReturnButton.Size = UDim2.new(0, 240, 0, 35); AutoReturnButton.Position = UDim2.new(0.5, -120, 0, 90); AutoReturnButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); AutoReturnButton.Font = Enum.Font.SourceSansBold; AutoReturnButton.Text = "Auto Return: OFF"; AutoReturnButton.TextColor3 = Color3.fromRGB(255, 255, 255); AutoReturnButton.TextSize = 16; AutoReturnButton.Parent = MainFrame
 local UICorner_AutoReturn = Instance.new("UICorner"); UICorner_AutoReturn.CornerRadius = UDim.new(0, 6); UICorner_AutoReturn.Parent = AutoReturnButton
-
--- YENİ BUTON: Auto Collect Wheat
 local AutoCollectWheatButton = Instance.new("TextButton"); AutoCollectWheatButton.Name = "AutoCollectWheatButton"; AutoCollectWheatButton.Size = UDim2.new(0, 240, 0, 35); AutoCollectWheatButton.Position = UDim2.new(0.5, -120, 0, 135); AutoCollectWheatButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); AutoCollectWheatButton.Font = Enum.Font.SourceSansBold; AutoCollectWheatButton.Text = "Auto Collect Wheat: OFF"; AutoCollectWheatButton.TextColor3 = Color3.fromRGB(255, 255, 255); AutoCollectWheatButton.TextSize = 16; AutoCollectWheatButton.Parent = MainFrame
 local UICorner_AutoCollect = Instance.new("UICorner"); UICorner_AutoCollect.CornerRadius = UDim.new(0, 6); UICorner_AutoCollect.Parent = AutoCollectWheatButton
-
 local SpeedSliderLabel = Instance.new("TextLabel"); SpeedSliderLabel.Name = "SpeedSliderLabel"; SpeedSliderLabel.Size = UDim2.new(1, -20, 0, 20); SpeedSliderLabel.Position = UDim2.new(0, 10, 0, 175); SpeedSliderLabel.Text = "Speed: 16"; SpeedSliderLabel.Font = Enum.Font.SourceSans; SpeedSliderLabel.TextSize = 14; SpeedSliderLabel.TextColor3 = Color3.fromRGB(220, 220, 220); SpeedSliderLabel.BackgroundTransparency = 1; SpeedSliderLabel.TextXAlignment = Enum.TextXAlignment.Left; SpeedSliderLabel.Parent = MainFrame
 local SliderBackground = Instance.new("Frame"); SliderBackground.Name = "SliderBackground"; SliderBackground.Size = UDim2.new(0, 240, 0, 10); SliderBackground.Position = UDim2.new(0.5, -120, 0, 195); SliderBackground.BackgroundColor3 = Color3.fromRGB(20, 20, 20); SliderBackground.Parent = MainFrame
 local UICorner_SliderBg = Instance.new("UICorner"); UICorner_SliderBg.Parent = SliderBackground
@@ -74,6 +71,22 @@ task.spawn(function() while task.wait(0.2) do pcall(function() if LocalPlayer.Ch
 
 local function UpdatePenLocation(character) pcall(function() if not character then return end; task.wait(1.5); local humanoidRootPart = character:FindFirstChild("HumanoidRootPart"); if humanoidRootPart then currentPenLocation = humanoidRootPart.Position end end) end
 LocalPlayer.CharacterAdded:Connect(UpdatePenLocation)
+
+local function GetMyPlot()
+    if not currentPenLocation then return nil end
+    local plotsFolder = workspace.Map:WaitForChild("Plots")
+    local closestPlot, shortestDist = nil, math.huge
+    for _, plot in ipairs(plotsFolder:GetChildren()) do
+        if plot:IsA("Model") and plot.PrimaryPart then
+            local dist = (plot.PrimaryPart.Position - currentPenLocation).Magnitude
+            if dist < shortestDist then
+                shortestDist = dist
+                closestPlot = plot
+            end
+        end
+    end
+    return closestPlot
+end
 
 local RemoteEvents = ReplicatedStorage:WaitForChild("Remote_Events", 10)
 if RemoteEvents then
@@ -106,18 +119,18 @@ if RemoteEvents then
 
     if WheatEvent then
         task.spawn(function()
-            local plotsFolder = workspace.Map:WaitForChild("Plots")
-            while task.wait(5) do -- Her 5 saniyede bir tüm hayvanları kontrol et
+            while task.wait(3) do
                 if _G.AutoCollectWheatEnabled then
                     pcall(function()
-                        for _, plot in ipairs(plotsFolder:GetChildren()) do
-                            local animalsFolder = plot:FindFirstChild("Animals")
+                        local myPlot = GetMyPlot()
+                        if myPlot then
+                            local animalsFolder = myPlot:FindFirstChild("Animals")
                             if animalsFolder then
                                 for _, animal in ipairs(animalsFolder:GetChildren()) do
                                     local hitbox = animal:FindFirstChild("TouchHitbox")
                                     if hitbox then
                                         WheatEvent:FireServer(hitbox)
-                                        task.wait(0.1) -- Sunucuyu yormamak için event'ler arası küçük bekleme
+                                        task.wait(0.1)
                                     end
                                 end
                             end
