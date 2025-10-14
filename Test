@@ -93,7 +93,6 @@ if RemoteEvents then
     local RestockEvent = RemoteEvents:WaitForChild("NOT", 5)
     BuyTreatEvent = RemoteEvents:WaitForChild("Buy_Treat", 5)
     local CaptureFXEvent = RemoteEvents:WaitForChild("Capture_FX", 5)
-    local WheatEvent = RemoteEvents:WaitForChild("Wheat_RE", 5)
     
     if RestockEvent and BuyTreatEvent then
         RestockEvent.OnClientEvent:Connect(function(message)
@@ -117,27 +116,32 @@ if RemoteEvents then
         end)
     end
 
-    if WheatEvent then
-        task.spawn(function()
-            while task.wait(3) do
-                if _G.AutoCollectWheatEnabled then
-                    pcall(function()
-                        local myPlot = GetMyPlot()
-                        if myPlot then
-                            local animalsFolder = myPlot:FindFirstChild("Animals")
-                            if animalsFolder then
-                                for _, animal in ipairs(animalsFolder:GetChildren()) do
-                                    local hitbox = animal:FindFirstChild("TouchHitbox")
-                                    if hitbox then
-                                        WheatEvent:FireServer(hitbox)
-                                        task.wait(0.1)
-                                    end
+    task.spawn(function()
+        while task.wait(1) do -- Döngüler arası bekleme 1 saniyeye düşürüldü
+            if _G.AutoCollectWheatEnabled then
+                pcall(function()
+                    local myPlot = GetMyPlot()
+                    local character = LocalPlayer.Character
+                    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+
+                    if myPlot and humanoidRootPart then
+                        local animalsFolder = myPlot:FindFirstChild("Animals")
+                        if animalsFolder then
+                            for _, animal in ipairs(animalsFolder:GetChildren()) do
+                                local hitbox = animal:FindFirstChild("TouchHitbox")
+                                if hitbox then
+                                    humanoidRootPart.CFrame = CFrame.new(hitbox.Position)
+                                    task.wait(0.2)
                                 end
                             end
+                            
+                            if currentPenLocation then
+                                humanoidRootPart.CFrame = CFrame.new(currentPenLocation)
+                            end
                         end
-                    end)
-                end
+                    end
+                end)
             end
-        end)
-    end
+        end
+    end)
 end
