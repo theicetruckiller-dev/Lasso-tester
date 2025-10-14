@@ -117,7 +117,7 @@ if RemoteEvents then
     end
 
     task.spawn(function()
-        while task.wait(1) do -- Döngüler arası bekleme 1 saniyeye düşürüldü
+        while task.wait(1) do
             if _G.AutoCollectWheatEnabled then
                 pcall(function()
                     local myPlot = GetMyPlot()
@@ -131,7 +131,7 @@ if RemoteEvents then
                                 local hitbox = animal:FindFirstChild("TouchHitbox")
                                 if hitbox then
                                     humanoidRootPart.CFrame = CFrame.new(hitbox.Position)
-                                    task.wait(0.2)
+                                    task.wait(0.7) -- Bu satırı 1.5'tan 0.7'ye değiştirdim
                                 end
                             end
                             
