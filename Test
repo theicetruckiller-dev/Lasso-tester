@@ -1,7 +1,7 @@
 -- // ============================= \\ --
 -- //      KEY SİSTEMİ AYARI      // --
 -- // ============================= \\ --
-local CorrectKey = "12345" -- Kullanıcıların girmesi gereken şifreyi buraya yaz.
+local CorrectKey = "HsJeak27Ekwj" -- Kullanıcıların girmesi gereken şifreyi buraya yaz.
 local DiscordLink = "https://discord.gg/2gEWFax4Vp" -- Panoya kopyalanacak Discord linki.
 -- // ============================= \\ --
 
