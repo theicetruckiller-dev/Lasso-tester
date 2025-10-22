@@ -1,1 +1,202 @@
-DON'T STEAL >:(
+-- // ============================= \\ --
+-- //      KEY SİSTEMİ AYARI      // --
+-- // ============================= \\ --
+local CorrectKey = "12345" -- Kullanıcıların girmesi gereken şifreyi buraya yaz.
+local DiscordLink = "https://discord.gg/2gEWFax4Vp" -- Panoya kopyalanacak Discord linki.
+-- // ============================= \\ --
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local currentPenLocation = nil
+_G.AutoBuyTreats = false
+_G.WalkSpeed = 16
+_G.AutoReturnEnabled = false
+_G.AutoCollectWheatEnabled = false
+
+-- YENİ: Otomatik satın alınacak meyvelerin listesi ve seçili olanı saklamak için değişken
+local fruitsToBuy = {"Carrot", "Apple", "Corn", "Pepper", "Banana", "Cherries"}
+_G.SelectedFruitToBuy = fruitsToBuy[1] -- Varsayılan olarak "Carrot" seçili
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomLassoGui_KeySystem"
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+-- ANA SCRIPT GUI'Sİ
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Visible = false
+MainFrame.Size = UDim2.new(0, 280, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+MainFrame.BorderSizePixel = 1
+MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 90)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner_Main = Instance.new("UICorner"); UICorner_Main.CornerRadius = UDim.new(0, 8); UICorner_Main.Parent = MainFrame
+local TitleBar = Instance.new("Frame"); TitleBar.Name = "TitleBar"; TitleBar.Size = UDim2.new(1, 0, 0, 30); TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35); TitleBar.BorderSizePixel = 0; TitleBar.Parent = MainFrame
+local UICorner_Title = Instance.new("UICorner"); UICorner_Title.CornerRadius = UDim.new(0, 8); UICorner_Title.Parent = TitleBar
+local TitleLabel = Instance.new("TextLabel"); TitleLabel.Name = "TitleLabel"; TitleLabel.Size = UDim2.new(1, 0, 1, 0); TitleLabel.Text = "Lasso Animals Helper"; TitleLabel.Font = Enum.Font.SourceSansBold; TitleLabel.TextSize = 16; TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); TitleLabel.BackgroundTransparency = 1; TitleLabel.Parent = TitleBar
+
+-- // ================================== \\ --
+-- //      YENİ AUTO BUY SİSTEMİ GUI     // --
+-- // ================================== \\ --
+
+-- Dropdown Menüsünü açacak ana buton
+local FruitSelectionButton = Instance.new("TextButton")
+FruitSelectionButton.Name = "FruitSelectionButton"
+FruitSelectionButton.Size = UDim2.new(0, 150, 0, 35)
+FruitSelectionButton.Position = UDim2.new(0.5, -120, 0, 45)
+FruitSelectionButton.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+FruitSelectionButton.Font = Enum.Font.SourceSansBold
+FruitSelectionButton.Text = "Select: " .. _G.SelectedFruitToBuy
+FruitSelectionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FruitSelectionButton.TextSize = 16
+FruitSelectionButton.Parent = MainFrame
+local UICorner_FruitSelect = Instance.new("UICorner"); UICorner_FruitSelect.CornerRadius = UDim.new(0, 6); UICorner_FruitSelect.Parent = FruitSelectionButton
+
+-- Auto Buy ON/OFF Butonu
+local AutoBuyToggleButton = Instance.new("TextButton")
+AutoBuyToggleButton.Name = "AutoBuyToggleButton"
+AutoBuyToggleButton.Size = UDim2.new(0, 80, 0, 35)
+AutoBuyToggleButton.Position = UDim2.new(0.5, 40, 0, 45) -- Dropdown'ın sağına konumlandırıldı
+AutoBuyToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+AutoBuyToggleButton.Font = Enum.Font.SourceSansBold
+AutoBuyToggleButton.Text = "Auto Buy: OFF"
+AutoBuyToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoBuyToggleButton.TextSize = 14
+AutoBuyToggleButton.Parent = MainFrame
+local UICorner_AutoBuyToggle = Instance.new("UICorner"); UICorner_AutoBuyToggle.CornerRadius = UDim.new(0, 6); UICorner_AutoBuyToggle.Parent = AutoBuyToggleButton
+
+-- Meyve seçeneklerini gösterecek kaydırılabilir çerçeve (başlangıçta gizli)
+local FruitOptionsFrame = Instance.new("ScrollingFrame")
+FruitOptionsFrame.Name = "FruitOptionsFrame"
+FruitOptionsFrame.Visible = false
+FruitOptionsFrame.Size = UDim2.new(0, 150, 0, 120)
+FruitOptionsFrame.Position = UDim2.new(0.5, -120, 0, 82) -- Ana butonun hemen altına
+FruitOptionsFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+FruitOptionsFrame.BorderSizePixel = 1
+FruitOptionsFrame.BorderColor3 = Color3.fromRGB(80, 80, 90)
+FruitOptionsFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Otomatik boyut için
+FruitOptionsFrame.ScrollBarThickness = 6
+FruitOptionsFrame.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = FruitOptionsFrame
+
+-- Seçenekleri doldurma
+for _, fruitName in ipairs(fruitsToBuy) do
+    local fruitOptionButton = Instance.new("TextButton")
+    fruitOptionButton.Name = fruitName
+    fruitOptionButton.Size = UDim2.new(1, -8, 0, 30) -- -8 scrollbar için boşluk
+    fruitOptionButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    fruitOptionButton.Font = Enum.Font.SourceSans
+    fruitOptionButton.Text = fruitName
+    fruitOptionButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+    fruitOptionButton.TextSize = 14
+    fruitOptionButton.Parent = FruitOptionsFrame
+
+    local UICorner_Option = Instance.new("UICorner"); UICorner_Option.CornerRadius = UDim.new(0, 4); UICorner_Option.Parent = fruitOptionButton
+
+    fruitOptionButton.MouseButton1Click:Connect(function()
+        _G.SelectedFruitToBuy = fruitName
+        FruitSelectionButton.Text = "Select: " .. fruitName
+        FruitOptionsFrame.Visible = false
+    end)
+end
+-- // ================================== \\ --
+
+local AutoReturnButton = Instance.new("TextButton"); AutoReturnButton.Name = "AutoReturnButton"; AutoReturnButton.Size = UDim2.new(0, 240, 0, 35); AutoReturnButton.Position = UDim2.new(0.5, -120, 0, 90); AutoReturnButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); AutoReturnButton.Font = Enum.Font.SourceSansBold; AutoReturnButton.Text = "Auto Return: OFF"; AutoReturnButton.TextColor3 = Color3.fromRGB(255, 255, 255); AutoReturnButton.TextSize = 16; AutoReturnButton.Parent = MainFrame
+local UICorner_AutoReturn = Instance.new("UICorner"); UICorner_AutoReturn.CornerRadius = UDim.new(0, 6); UICorner_AutoReturn.Parent = AutoReturnButton
+local AutoCollectWheatButton = Instance.new("TextButton"); AutoCollectWheatButton.Name = "AutoCollectWheatButton"; AutoCollectWheatButton.Size = UDim2.new(0, 240, 0, 35); AutoCollectWheatButton.Position = UDim2.new(0.5, -120, 0, 135); AutoCollectWheatButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50); AutoCollectWheatButton.Font = Enum.Font.SourceSansBold; AutoCollectWheatButton.Text = "Auto Collect Wheat: OFF"; AutoCollectWheatButton.TextColor3 = Color3.fromRGB(255, 255, 255); AutoCollectWheatButton.TextSize = 16; AutoCollectWheatButton.Parent = MainFrame
+local UICorner_AutoCollect = Instance.new("UICorner"); UICorner_AutoCollect.CornerRadius = UDim.new(0, 6); UICorner_AutoCollect.Parent = AutoCollectWheatButton
+local SpeedSliderLabel = Instance.new("TextLabel"); SpeedSliderLabel.Name = "SpeedSliderLabel"; SpeedSliderLabel.Size = UDim2.new(1, -20, 0, 20); SpeedSliderLabel.Position = UDim2.new(0, 10, 0, 175); SpeedSliderLabel.Text = "Speed: 16"; SpeedSliderLabel.Font = Enum.Font.SourceSans; SpeedSliderLabel.TextSize = 14; SpeedSliderLabel.TextColor3 = Color3.fromRGB(220, 220, 220); SpeedSliderLabel.BackgroundTransparency = 1; SpeedSliderLabel.TextXAlignment = Enum.TextXAlignment.Left; SpeedSliderLabel.Parent = MainFrame
+local SliderBackground = Instance.new("Frame"); SliderBackground.Name = "SliderBackground"; SliderBackground.Size = UDim2.new(0, 240, 0, 10); SliderBackground.Position = UDim2.new(0.5, -120, 0, 195); SliderBackground.BackgroundColor3 = Color3.fromRGB(20, 20, 20); SliderBackground.Parent = MainFrame
+local UICorner_SliderBg = Instance.new("UICorner"); UICorner_SliderBg.Parent = SliderBackground
+local SliderHandle = Instance.new("TextButton"); SliderHandle.Name = "SliderHandle"; SliderHandle.Size = UDim2.new(0, 20, 0, 20); SliderHandle.Position = UDim2.new(0, -10, 0.5, -10); SliderHandle.BackgroundColor3 = Color3.fromRGB(150, 150, 150); SliderHandle.BorderSizePixel = 0; SliderHandle.Draggable = false; SliderHandle.Text = ""; SliderHandle.Parent = SliderBackground
+local UICorner_Handle = Instance.new("UICorner"); UICorner_Handle.Parent = SliderHandle
+local MediumSpeedButton = Instance.new("TextButton"); MediumSpeedButton.Name = "MediumSpeedButton"; MediumSpeedButton.Size = UDim2.new(0, 75, 0, 30); MediumSpeedButton.Position = UDim2.new(0.5, -120, 0, 220); MediumSpeedButton.BackgroundColor3 = Color3.fromRGB(80, 80, 90); MediumSpeedButton.Font = Enum.Font.SourceSans; MediumSpeedButton.Text = "Medium Speed"; MediumSpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255); MediumSpeedButton.TextSize = 14; MediumSpeedButton.Parent = MainFrame
+local UICorner_Med = Instance.new("UICorner"); UICorner_Med.CornerRadius = UDim.new(0, 6); UICorner_Med.Parent = MediumSpeedButton
+local FastSpeedButton = Instance.new("TextButton"); FastSpeedButton.Name = "FastSpeedButton"; FastSpeedButton.Size = UDim2.new(0, 75, 0, 30); FastSpeedButton.Position = UDim2.new(0.5, -37.5, 0, 220); FastSpeedButton.BackgroundColor3 = Color3.fromRGB(80, 80, 90); FastSpeedButton.Font = Enum.Font.SourceSans; FastSpeedButton.Text = "Fast Speed"; FastSpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255); FastSpeedButton.TextSize = 14; FastSpeedButton.Parent = MainFrame
+local UICorner_Fast = Instance.new("UICorner"); UICorner_Fast.CornerRadius = UDim.new(0, 6); UICorner_Fast.Parent = FastSpeedButton
+local ResetSpeedButton = Instance.new("TextButton"); ResetSpeedButton.Name = "ResetSpeedButton"; ResetSpeedButton.Size = UDim2.new(0, 75, 0, 30); ResetSpeedButton.Position = UDim2.new(0.5, 45, 0, 220); ResetSpeedButton.BackgroundColor3 = Color3.fromRGB(80, 80, 90); ResetSpeedButton.Font = Enum.Font.SourceSans; ResetSpeedButton.Text = "Reset"; ResetSpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255); ResetSpeedButton.TextSize = 14; ResetSpeedButton.Parent = MainFrame
+local UICorner_Reset = Instance.new("UICorner"); UICorner_Reset.CornerRadius = UDim.new(0, 6); UICorner_Reset.Parent = ResetSpeedButton
+local DiscordLabel = Instance.new("TextLabel"); DiscordLabel.Name = "DiscordLabel"; DiscordLabel.Size = UDim2.new(0, 200, 0, 15); DiscordLabel.Position = UDim2.new(0, 10, 1, -25); DiscordLabel.Text = "Discord - 847q"; DiscordLabel.Font = Enum.Font.SourceSans; DiscordLabel.TextSize = 14; DiscordLabel.TextColor3 = Color3.fromRGB(180, 180, 180); DiscordLabel.BackgroundTransparency = 1; DiscordLabel.TextXAlignment = Enum.TextXAlignment.Left; DiscordLabel.Parent = MainFrame
+local ToggleVisibilityButton = Instance.new("TextButton"); ToggleVisibilityButton.Name = "ToggleVisibilityButton"; ToggleVisibilityButton.Size = UDim2.new(0, 80, 0, 30); ToggleVisibilityButton.Position = UDim2.new(0, 10, 0.5, 0); ToggleVisibilityButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0); ToggleVisibilityButton.BackgroundTransparency = 0.4; ToggleVisibilityButton.Font = Enum.Font.SourceSansBold; ToggleVisibilityButton.Text = "Hide"; ToggleVisibilityButton.TextColor3 = Color3.fromRGB(255, 255, 255); ToggleVisibilityButton.TextSize = 14; ToggleVisibilityButton.Draggable = true; ToggleVisibilityButton.Active = true; ToggleVisibilityButton.Visible = false; ToggleVisibilityButton.Parent = ScreenGui
+local UICorner_Toggle = Instance.new("UICorner"); UICorner_Toggle.CornerRadius = UDim.new(0, 8); UICorner_Toggle.Parent = ToggleVisibilityButton
+
+
+-- KEY SİSTEMİ GUI'Sİ (Değişiklik yok)
+local KeyFrame = Instance.new("Frame"); KeyFrame.Name = "KeyFrame"; KeyFrame.Size = UDim2.new(0, 300, 0, 200); KeyFrame.Position = UDim2.new(0.5, -150, 0.5, -100); KeyFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45); KeyFrame.BorderSizePixel = 1; KeyFrame.BorderColor3 = Color3.fromRGB(80, 80, 90); KeyFrame.Parent = ScreenGui
+local UICorner_Key = Instance.new("UICorner"); UICorner_Key.CornerRadius = UDim.new(0, 8); UICorner_Key.Parent = KeyFrame
+local KeyTitle = Instance.new("TextLabel"); KeyTitle.Name = "KeyTitle"; KeyTitle.Size = UDim2.new(1, 0, 0, 30); KeyTitle.BackgroundColor3 = Color3.fromRGB(25, 25, 35); KeyTitle.Text = "KEY IS HERE"; KeyTitle.Font = Enum.Font.SourceSansBold; KeyTitle.TextSize = 16; KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255); KeyTitle.Parent = KeyFrame
+local UICorner_KeyTitle = Instance.new("UICorner"); UICorner_KeyTitle.CornerRadius = UDim.new(0, 8); UICorner_KeyTitle.Parent = KeyTitle
+local DiscordButton = Instance.new("TextButton"); DiscordButton.Name = "DiscordButton"; DiscordButton.Size = UDim2.new(0, 260, 0, 35); DiscordButton.Position = UDim2.new(0.5, -130, 0, 45); DiscordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242); DiscordButton.Font = Enum.Font.SourceSansBold; DiscordButton.Text = "Copy Discord Link"; DiscordButton.TextColor3 = Color3.fromRGB(255, 255, 255); DiscordButton.TextSize = 16; DiscordButton.Parent = KeyFrame
+local UICorner_Discord = Instance.new("UICorner"); UICorner_Discord.CornerRadius = UDim.new(0, 6); UICorner_Discord.Parent = DiscordButton
+local KeyInput = Instance.new("TextBox"); KeyInput.Name = "KeyInput"; KeyInput.Size = UDim2.new(0, 260, 0, 35); KeyInput.Position = UDim2.new(0.5, -130, 0, 90); KeyInput.BackgroundColor3 = Color3.fromRGB(20, 20, 20); KeyInput.TextColor3 = Color3.fromRGB(220, 220, 220); KeyInput.PlaceholderText = "Your Key..."; KeyInput.Font = Enum.Font.SourceSans; KeyInput.TextSize = 14; KeyInput.Parent = KeyFrame
+local UICorner_KeyInput = Instance.new("UICorner"); UICorner_KeyInput.CornerRadius = UDim.new(0, 6); UICorner_KeyInput.Parent = KeyInput
+local SubmitButton = Instance.new("TextButton"); SubmitButton.Name = "SubmitButton"; SubmitButton.Size = UDim2.new(0, 260, 0, 35); SubmitButton.Position = UDim2.new(0.5, -130, 0, 135); SubmitButton.BackgroundColor3 = Color3.fromRGB(80, 80, 90); SubmitButton.Font = Enum.Font.SourceSansBold; SubmitButton.Text = "Enter"; SubmitButton.TextColor3 = Color3.fromRGB(255, 255, 255); SubmitButton.TextSize = 16; SubmitButton.Parent = KeyFrame
+local UICorner_Submit = Instance.new("UICorner"); UICorner_Submit.CornerRadius = UDim.new(0, 6); UICorner_Submit.Parent = SubmitButton
+local StatusLabel = Instance.new("TextLabel"); StatusLabel.Name = "StatusLabel"; StatusLabel.Size = UDim2.new(1, 0, 0, 20); StatusLabel.Position = UDim2.new(0, 0, 0, 175); StatusLabel.Text = ""; StatusLabel.Font = Enum.Font.SourceSans; StatusLabel.TextSize = 14; StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80); StatusLabel.BackgroundTransparency = 1; StatusLabel.Parent = KeyFrame
+DiscordButton.MouseButton1Click:Connect(function() if setclipboard then setclipboard(DiscordLink); local originalText = DiscordButton.Text; DiscordButton.Text = "Copied to Clipboard!"; task.wait(2); DiscordButton.Text = originalText end end)
+SubmitButton.MouseButton1Click:Connect(function() if KeyInput.Text == CorrectKey then StatusLabel.TextColor3 = Color3.fromRGB(80, 255, 80); StatusLabel.Text = "Success! Loading..."; task.wait(1); KeyFrame:Destroy(); MainFrame.Visible = true; ToggleVisibilityButton.Visible = true; if LocalPlayer.Character then pcall(function() LocalPlayer.Character:WaitForChild("Humanoid").Health = 0 end) end else StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80); StatusLabel.Text = "Incorrect Key!"; task.wait(2); StatusLabel.Text = "" end end)
+
+
+-- // ================================== \\ --
+-- //     GÜNCELLENMİŞ SCRIPT MANTIĞI    // --
+-- // ================================== \\ --
+
+-- Dropdown menüsünün görünürlüğünü aç/kapa
+FruitSelectionButton.MouseButton1Click:Connect(function()
+    FruitOptionsFrame.Visible = not FruitOptionsFrame.Visible
+end)
+
+local function UpdateSlider(value) local min, max = 16, 150; local percentage = (value - min) / (max - min); SliderHandle.Position = UDim2.new(percentage, -10, 0.5, -10); _G.WalkSpeed = value; SpeedSliderLabel.Text = "Speed: " .. math.floor(value) end
+MediumSpeedButton.MouseButton1Click:Connect(function() UpdateSlider(60) end)
+FastSpeedButton.MouseButton1Click:Connect(function() UpdateSlider(120) end)
+ResetSpeedButton.MouseButton1Click:Connect(function() UpdateSlider(16) end)
+local isDragging = false; SliderHandle.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDragging = true end end); SliderHandle.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDragging = false end end); UserInputService.InputChanged:Connect(function(input) if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then local mouseX = input.Position.X; local startX = SliderBackground.AbsolutePosition.X; local width = SliderBackground.AbsoluteSize.X; local percentage = math.clamp((mouseX - startX) / width, 0, 1); local min, max = 16, 150; local newValue = min + (max - min) * percentage; UpdateSlider(newValue) end end)
+ToggleVisibilityButton.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible; ToggleVisibilityButton.Text = MainFrame.Visible and "Hide" or "Show" end)
+AutoReturnButton.MouseButton1Click:Connect(function() _G.AutoReturnEnabled = not _G.AutoReturnEnabled; if _G.AutoReturnEnabled then AutoReturnButton.Text = "Auto Return: ON"; AutoReturnButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) else AutoReturnButton.Text = "Auto Return: OFF"; AutoReturnButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) end end)
+AutoCollectWheatButton.MouseButton1Click:Connect(function() _G.AutoCollectWheatEnabled = not _G.AutoCollectWheatEnabled; if _G.AutoCollectWheatEnabled then AutoCollectWheatButton.Text = "Auto Collect Wheat: ON"; AutoCollectWheatButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) else AutoCollectWheatButton.Text = "Auto Collect Wheat: OFF"; AutoCollectWheatButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) end end)
+
+local BuyTreatEvent = nil
+
+-- GÜNCELLENDİ: Sadece seçili olan meyveyi satın almayı dener
+local function AttemptToBuySelectedFruit()
+    if not _G.AutoBuyTreats or not BuyTreatEvent or not _G.SelectedFruitToBuy then
+        return
+    end
+    
+    local fruitToBuy = _G.SelectedFruitToBuy
+    -- 10 kere almayı dener
+    for i = 1, 10 do
+        pcall(function() BuyTreatEvent:FireServer(fruitToBuy) end)
+        task.wait(0.05)
+    end
+end
+
+-- GÜNCELLENDİ: Yeni Auto Buy butonu
+AutoBuyToggleButton.MouseButton1Click:Connect(function()
+    _G.AutoBuyTreats = not _G.AutoBuyTreats
+    if _G.AutoBuyTreats then
+        AutoBuyToggleButton.Text = "Auto Buy: ON"
+        AutoBuyToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        AttemptToBuySelectedFruit() -- Sadece seçili olanı almayı başlat
+    else
+        AutoBuyToggleButton.Text = "Auto Buy: OFF"
+        AutoBuyToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+task.spawn(function() while task.wait(0.2) do pcall(function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = _G.WalkSpeed end end) end end)
+local function UpdatePenLocation(character) pcall(function() if not character then return end; task.wait(1.5); local humanoidRootPart = character:FindFirstChild("HumanoidRootPart"); if humanoidRootPart then currentPenLocation = humanoidRootPart.Position end end) end
+LocalPlayer.CharacterAdded:Connect(UpdatePenLocation)
+local function GetMyPlot() if not currentPenLocation then return nil end; local plotsFolder = workspace.Map:WaitForChild("Plots"); local closestPlot, shortestDist = nil, math.huge; for _, plot in ipairs(plotsFolder:GetChildren()) do if plot:IsA("Model") and plot.PrimaryPart then local dist 
